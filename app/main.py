@@ -8,7 +8,7 @@ from pathlib import Path
 
 import chess
 import chess.pgn
-from PySide6.QtCore import QPoint, Qt, QThread, Signal
+from PySide6.QtCore import QPoint, QSize, Qt, QThread, Signal
 from PySide6.QtGui import QGuiApplication, QPixmap
 from PySide6.QtWidgets import (
     QApplication,
@@ -325,9 +325,9 @@ class MainWindow(QWidget):
         layout.addWidget(self.open_search)
 
         self.open_list = QListWidget()
-        self.open_list.setMaximumHeight(140)
-        self.open_list.setWordWrap(False)
-        self.open_list.setHorizontalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+        self.open_list.setMaximumHeight(138)
+        self.open_list.setWordWrap(True)
+        self.open_list.setTextElideMode(Qt.ElideRight)
         self.open_list.itemDoubleClicked.connect(lambda _item: self.load_opening())
         layout.addWidget(self.open_list)
 
@@ -672,9 +672,10 @@ class MainWindow(QWidget):
         hits = openings.search(query)
         self.open_list.clear()
         for opening in hits:
-            item = QListWidgetItem(f"{opening.name} · {opening.eco} · {opening.line}")
+            item = QListWidgetItem(f"{opening.name} · {opening.eco}\n{opening.line}")
             item.setData(Qt.UserRole, opening)
             item.setToolTip(f"{opening.english}\n{opening.line}")
+            item.setSizeHint(QSize(0, 44))
             self.open_list.addItem(item)
         if hits:
             self.open_list.setCurrentRow(0)

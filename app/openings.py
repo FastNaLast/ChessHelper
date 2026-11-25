@@ -7,7 +7,7 @@
 from __future__ import annotations
 
 import re
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 import chess
 
@@ -180,9 +180,10 @@ def search(query: str, limit: int = 40) -> list[Opening]:
         score = 0
         name = _norm(opening.name)
         english = _norm(opening.english)
-        if name.startswith(q) or english.startswith(q):
+        short = re.sub(r"^(?:защита|дебют|система|гамбит|начало)\s+", "", name)
+        if name.startswith(q) or english.startswith(q) or short.startswith(q):
             score = 100
-        elif q in name or q in english:
+        elif q in name or q in english or q in short:
             score = 70
         elif any(q in _norm(alias) for alias in opening.aliases):
             score = 60
@@ -195,7 +196,7 @@ def search(query: str, limit: int = 40) -> list[Opening]:
         if score:
             scored.append((score, opening))
 
-    scored.sort(key=lambda pair: (-pair[0], pair[1].eco, pair[1].name))
+    scored.sort(key=lambda pair: (-pair[0], len(pair[1].name), pair[1].name))
     return [opening for _, opening in scored[:limit]]
 
 
