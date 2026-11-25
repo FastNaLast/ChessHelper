@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#12151c">
+<title>Шахматы на телефоне</title>
+<style>
+  :root { color-scheme: dark; }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; min-height: 100vh; padding: 24px 18px;
+    display: flex; flex-direction: column; justify-content: center; gap: 14px;
+    background: #12151c; color: #e8ecf2;
+    font: 17px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+  h1 { margin: 0; font-size: 30px; letter-spacing: .3px; }
+  p { margin: 0; color: #9aa4b2; }
+  .card {
+    background: #1b202b; border: 1px solid #2a3140; border-radius: 16px;
+    padding: 16px; display: flex; flex-direction: column; gap: 10px;
+  }
+  label { font-size: 13px; text-transform: uppercase; letter-spacing: .08em; color: #8d97a6; }
+  input {
+    width: 100%; padding: 14px; border-radius: 12px; border: 1px solid #333c4d;
+    background: #11151d; color: #e8ecf2; font-size: 18px; font-variant-numeric: tabular-nums;
+  }
+  button {
+    width: 100%; padding: 18px; border: 0; border-radius: 14px; cursor: pointer;
+    background: #3f9d5c; color: #fff; font-size: 20px; font-weight: 700;
+  }
+  button:active { transform: scale(.99); }
+  .tip { font-size: 14px; color: #8d97a6; }
+  .tip b { color: #c9d2df; }
+</style>
+</head>
+<body>
+  <h1>♞ Шахматы</h1>
+  <p>Движок считает на компьютере. Телефон только показывает доску.</p>
+
+  <div class="card">
+    <label for="url">Адрес компьютера</label>
+    <input id="url" inputmode="url" autocapitalize="off" autocomplete="off" spellcheck="false"
+           value="http://192.168.1.46:8000">
+    <button id="go">Открыть доску</button>
+    <div class="tip">
+      Если не открылось — на ПК запусти ярлык <b>«Шахматы на телефоне»</b> и проверь адрес
+      в чёрном окне. Телефон и ПК должны быть в одной Wi-Fi.
+    </div>
+  </div>
+
+  <p class="tip">
+    Совет: когда доска откроется, в меню браузера выбери <b>«Добавить на главный экран»</b> —
+    получится иконка как у приложения.
+  </p>
+
+<script>
+  const input = document.getElementById('url');
+  const saved = localStorage.getItem('chessPcUrl');
+  if (saved) input.value = saved;
+
+  function open() {
+    let value = input.value.trim();
+    if (!/^https?:\/\//i.test(value)) value = 'http://' + value;
+    value = value.replace(/\/+$/, '');
+    localStorage.setItem('chessPcUrl', value);
+    location.href = value;
+  }
+
+  document.getElementById('go').addEventListener('click', open);
+  input.addEventListener('keydown', (event) => {
+    if (event.key === 'Enter') open();
+  });
+  input.addEventListener('focus', () => input.select());
+</script>
+</body>
+</html>

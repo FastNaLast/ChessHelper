@@ -18,6 +18,8 @@ from PySide6.QtWidgets import (
     QHBoxLayout,
     QLabel,
     QLineEdit,
+    QListWidget,
+    QListWidgetItem,
     QMessageBox,
     QProgressBar,
     QPushButton,
@@ -32,7 +34,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from . import config
+from . import config, openings
 from .board_widget import BoardView
 from .camera import FrameView, StreamReader, draw_grid, np_to_qimage, split_cells, warp_board
 from .capture import RegionSelector, grab_region
@@ -307,6 +309,37 @@ class MainWindow(QWidget):
         layout = QVBoxLayout(page)
         layout.setSpacing(6)
 
+        hint = QLabel(
+            f"Библиотека дебютов ({len(openings.LIBRARY)} линий): напиши название — "
+            "файлы не нужны. Можно искать по ходам: «e4 c5»."
+        )
+        hint.setObjectName("hint")
+        hint.setWordWrap(True)
+        layout.addWidget(hint)
+
+        self.open_search = QLineEdit()
+        self.open_search.setPlaceholderText("сицилианская, лондон, каро-канн, e4 c5…")
+        self.open_search.setClearButtonEnabled(True)
+        self.open_search.textChanged.connect(self._filter_openings)
+        self.open_search.returnPressed.connect(self.load_opening)
+        layout.addWidget(self.open_search)
+
+        self.open_list = QListWidget()
+        self.open_list.setMaximumHeight(140)
+        self.open_list.setWordWrap(False)
+        self.open_list.setHorizontalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+        self.open_list.itemDoubleClicked.connect(lambda _item: self.load_opening())
+        layout.addWidget(self.open_list)
+
+        load_btn = QPushButton("Поставить дебют на доску")
+        load_btn.setObjectName("primary")
+        load_btn.clicked.connect(self.load_opening)
+        layout.addWidget(load_btn)
+
+        pgn_hint = QLabel("Мой репертуар из PGN (необязательно)")
+        pgn_hint.setObjectName("hint")
+        layout.addWidget(pgn_hint)
+
         row = QHBoxLayout()
         self.book_combo = QComboBox()
         self.book_combo.currentIndexChanged.connect(self._update_book_hint)
@@ -315,13 +348,6 @@ class MainWindow(QWidget):
         reload_btn.clicked.connect(self._reload_books)
         row.addWidget(reload_btn)
         layout.addLayout(row)
-
-        hint = QLabel(
-            "Положи PGN-файлы репертуара в data\\repertoire\\. Имя файла = название дебюта."
-        )
-        hint.setObjectName("hint")
-        hint.setWordWrap(True)
-        layout.addWidget(hint)
 
         self.book_status = QLabel("")
         self.book_status.setWordWrap(True)
@@ -339,6 +365,8 @@ class MainWindow(QWidget):
         self.book_log = QTextEdit()
         self.book_log.setReadOnly(True)
         layout.addWidget(self.book_log, 1)
+
+        self._filter_openings()
         return page
 
     def _build_camera_tab(self) -> QWidget:
@@ -639,6 +667,43 @@ class MainWindow(QWidget):
         self._set_status(f"Сохранено: {target}")
 
     # ----------------------------------------------------------- repertoire
+    def _filter_openings(self) -> None:
+        query = self.open_search.text().strip()
+        hits = openings.search(query)
+        self.open_list.clear()
+        for opening in hits:
+            item = QListWidgetItem(f"{opening.name} · {opening.eco} · {opening.line}")
+            item.setData(Qt.UserRole, opening)
+            item.setToolTip(f"{opening.english}\n{opening.line}")
+            self.open_list.addItem(item)
+        if hits:
+            self.open_list.setCurrentRow(0)
+        elif query:
+            self.open_list.addItem(QListWidgetItem("Ничего не найдено — попробуй другое название"))
+
+    def load_opening(self) -> None:
+        item = self.open_list.currentItem()
+        opening = item.data(Qt.UserRole) if item is not None else None
+        if not isinstance(opening, openings.Opening):
+            self._set_status("Выбери дебют из списка или напиши название.")
+            return
+        try:
+            board = opening.board()
+        except ValueError as exc:
+            QMessageBox.warning(self, "Дебют", f"Не удалось прочитать линию: {exc}")
+            return
+        self.board = board
+        self.last_move = board.peek() if board.move_stack else None
+        self.fen_edit.setText(board.fen())
+        self.board_view.set_board(board, self.last_move)
+        self.book_log.append(f"{opening.name} ({opening.eco}, {opening.english})\n   {opening.line}")
+        self._set_status(
+            f"Дебют: {opening.name} · {opening.eco} · ходов {len(opening.moves)}"
+        )
+        self._update_book_hint()
+        if self.auto_check.isChecked():
+            self.start_analysis()
+
     def _refresh_books(self) -> None:
         self.book_combo.blockSignals(True)
         self.book_combo.clear()
@@ -661,9 +726,11 @@ class MainWindow(QWidget):
         hit = self.repertoire.lookup(self.board, book)
         if hit is None:
             if self.repertoire.names():
-                self.book_status.setText("В книге нет хода для этой позиции.")
+                self.book_status.setText("В моём PGN-репертуаре нет хода для этой позиции.")
             else:
-                self.book_status.setText("Репертуар пуст: положи PGN в data\\repertoire\\.")
+                self.book_status.setText(
+                    "PGN-репертуар пуст — библиотека дебютов выше работает без файлов."
+                )
             return
         self.book_status.setText(
             f"Книжный ход: {hit.san}  (встречается {hit.count} из {hit.total}, "
