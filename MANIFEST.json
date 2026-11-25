@@ -1,0 +1,48 @@
+{
+  "project": "chess-assistant",
+  "created": "2026-11-24",
+  "note": "Список всего, что скачано/установлено для проекта. tools/uninstall.ps1 удаляет перечисленное.",
+  "artifacts": [
+    {
+      "path": "engine/stockfish.exe",
+      "kind": "downloaded",
+      "source": "https://github.com/official-stockfish/Stockfish/releases/download/sf_19/stockfish-windows-x86-64-universal.zip",
+      "size_bytes": 103046300,
+      "version": "Stockfish 19 (sf_19)"
+    },
+    {
+      "path": ".venv",
+      "kind": "created",
+      "source": "python -m venv (Python 3.10.3)",
+      "packages": [
+        "PySide6",
+        "python-chess",
+        "mss",
+        "opencv-python",
+        "numpy",
+        "pillow"
+      ],
+      "index_used": "https://pypi.tuna.tsinghua.edu.cn/simple (pypi.org недоступен без VPN)"
+    }
+  ],
+  "not_installed": [
+    "Ничего не ставилось в системный Python и в систему — всё внутри папки проекта."
+  ],
+  "outside_project": [
+    {
+      "path": "%USERPROFILE%\\Desktop\\Шахматный помощник.lnk",
+      "kind": "shortcut",
+      "note": "Ярлык запуска помощника. Удаляется через tools/uninstall.ps1"
+    },
+    {
+      "path": "%USERPROFILE%\\Desktop\\Шахматы на телефоне.lnk",
+      "kind": "shortcut",
+      "note": "Ярлык запуска локального сервера для телефона. Удаляется через tools/uninstall.ps1"
+    },
+    {
+      "path": "%USERPROFILE%\\Desktop\\chess-assistant-<дата>.zip",
+      "kind": "backup",
+      "note": "Создаётся tools/backup.ps1 для переноса на другой ПК"
+    }
+  ]
+}

@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+  <meta name="theme-color" content="#1E1F22">
+  <title>Шахматы</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="app">
+    <header>
+      <span class="title">Шахматы</span>
+      <span id="eval" class="eval">+0.00</span>
+    </header>
+
+    <div id="status" class="status">Ход белых</div>
+    <div id="board" class="board"></div>
+
+    <div class="row">
+      <select id="level" aria-label="Уровень"></select>
+      <select id="colorSide" aria-label="Цвет">
+        <option value="w">белые</option>
+        <option value="b">чёрные</option>
+      </select>
+      <button id="newGame">Новая</button>
+    </div>
+
+    <div class="row">
+      <button id="hintBtn">Подсказка</button>
+      <button id="botBtn">Ход за меня</button>
+      <button id="undoBtn">Назад</button>
+    </div>
+
+    <div id="hintText" class="hint"></div>
+
+    <div id="promo" class="promo hidden">
+      <div class="promo-box">
+        <div class="promo-title">Превращение</div>
+        <div class="promo-buttons">
+          <button data-piece="q">&#9819;</button>
+          <button data-piece="r">&#9820;</button>
+          <button data-piece="b">&#9821;</button>
+          <button data-piece="n">&#9822;</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  <script src="app.js"></script>
+</body>
+</html>

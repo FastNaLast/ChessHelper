@@ -1,0 +1,7 @@
+.venv/
+engine/
+__pycache__/
+*.pyc
+reports/
+settings.json
+*.zip
