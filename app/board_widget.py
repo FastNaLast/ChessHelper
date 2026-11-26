@@ -29,7 +29,7 @@ class BoardView(QWidget):
         self.board = chess.Board()
         self.flipped = False
         self.last_move = None
-        self.setMinimumSize(260, 260)
+        self.setMinimumSize(180, 180)
 
     def set_board(self, board: chess.Board, last_move=None) -> None:
         self.board = board

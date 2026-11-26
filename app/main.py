@@ -124,7 +124,7 @@ class MainWindow(QWidget):
 
         self.setStyleSheet(STYLE)
         self.setWindowTitle("Шахматный помощник")
-        self.setMinimumSize(420, 560)
+        self.setMinimumSize(470, 560)
         self._build_ui()
         self._restore_geometry()
         self._refresh_books()
@@ -189,16 +189,47 @@ class MainWindow(QWidget):
         self.opacity_slider.setValue(int(self.cfg["opacity"] * 100))
         self.opacity_slider.valueChanged.connect(self._apply_opacity)
         footer.addWidget(self.opacity_slider, 1)
+        root.addLayout(footer)
+
+        size_row = QHBoxLayout()
+        size_row.setSpacing(6)
+        size_row.addWidget(QLabel("Размер"))
+        minus_btn = QToolButton()
+        minus_btn.setText("\u2212")
+        minus_btn.setToolTip("Окно меньше (10%)")
+        minus_btn.setAutoRepeat(True)
+        minus_btn.setAutoRepeatDelay(400)
+        minus_btn.setAutoRepeatInterval(90)
+        minus_btn.clicked.connect(lambda: self._resize_step(0.9))
+        size_row.addWidget(minus_btn)
+
+        self.size_label = QLabel("")
+        self.size_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.size_label.setMinimumWidth(66)
+        self.size_label.setToolTip("Текущий размер окна. Кнопки − и + меняют его на 10%.")
+        size_row.addWidget(self.size_label)
+
+        plus_btn = QToolButton()
+        plus_btn.setText("+")
+        plus_btn.setToolTip("Окно больше (10%)")
+        plus_btn.setAutoRepeat(True)
+        plus_btn.setAutoRepeatDelay(400)
+        plus_btn.setAutoRepeatInterval(90)
+        plus_btn.clicked.connect(lambda: self._resize_step(1.1))
+        size_row.addWidget(plus_btn)
+        size_row.addStretch(1)
+
         grip = QSizeGrip(self)
         grip.setFixedSize(14, 14)
-        footer.addWidget(grip)
-        root.addLayout(footer)
+        size_row.addWidget(grip)
+        root.addLayout(size_row)
 
         self.status = QLabel("")
         self.status.setObjectName("hint")
         self.status.setWordWrap(True)
         root.addWidget(self.status)
 
+        self._update_size_label()
         self._apply_opacity(self.opacity_slider.value())
 
     def _build_analysis_tab(self) -> QWidget:
@@ -256,7 +287,7 @@ class MainWindow(QWidget):
 
         self.result_edit = QTextEdit()
         self.result_edit.setReadOnly(True)
-        self.result_edit.setMinimumHeight(110)
+        self.result_edit.setMinimumHeight(60)
         layout.addWidget(self.result_edit)
         return page
 
@@ -501,6 +532,36 @@ class MainWindow(QWidget):
 
     def _apply_opacity(self, value: int) -> None:
         self.setWindowOpacity(max(0.3, value / 100.0))
+
+    def _update_size_label(self) -> None:
+        self.size_label.setText(f"{self.width()}\u00d7{self.height()}")
+
+    def resizeEvent(self, event) -> None:  # noqa: N802
+        super().resizeEvent(event)
+        if hasattr(self, "size_label"):
+            self._update_size_label()
+
+    def _resize_step(self, factor: float) -> None:
+        """Меняет размер окна на factor, не выпуская его за пределы экрана."""
+        screen = QGuiApplication.screenAt(self.frameGeometry().center())
+        if screen is None:
+            screen = QGuiApplication.primaryScreen()
+        available = screen.availableGeometry() if screen is not None else None
+        width = max(self.minimumWidth(), int(round(self.width() * factor)))
+        height = max(self.minimumHeight(), int(round(self.height() * factor)))
+        if available is not None:
+            width = min(width, available.width() - 16)
+            height = min(height, available.height() - 16)
+        else:
+            width = max(width, self.minimumWidth())
+            height = max(height, self.minimumHeight())
+        if width == self.width() and height == self.height():
+            return
+        x, y = self.x(), self.y()
+        if available is not None:
+            x = min(max(x, available.left()), available.right() - width + 1)
+            y = min(max(y, available.top()), available.bottom() - height + 1)
+        self.setGeometry(x, y, width, height)
 
     def _set_status(self, text: str) -> None:
         self.status.setText(text)
