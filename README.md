@@ -129,3 +129,16 @@ powershell -ExecutionPolicy Bypass -File tools\backup.ps1
 
 Получишь zip на рабочем столе без `.venv` и `engine`. На новом ПК: распаковать →
 `setup.bat`. Либо скопировать всю папку целиком, кроме `.venv` (её надо пересоздать).
+
+## Иконки
+
+Иконки лежат в `assets/icons` (`assistant.ico`, `phone.ico` и исходные PNG).
+Перерисовать и заново поставить на ярлыки:
+
+```
+.venv\Scripts\python.exe tools\make_icons.py
+powershell -ExecutionPolicy Bypass -File tools\make-shortcuts.ps1
+```
+
+Скрипт ярлыков создаёт оба ярлыка на рабочем столе с нужными иконками и сбрасывает
+кэш Проводника. Если иконка всё равно старая — `F5` на рабочем столе.

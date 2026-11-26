@@ -9,7 +9,7 @@ from pathlib import Path
 import chess
 import chess.pgn
 from PySide6.QtCore import QPoint, QSize, Qt, QThread, Signal
-from PySide6.QtGui import QGuiApplication, QPixmap
+from PySide6.QtGui import QGuiApplication, QIcon, QPixmap
 from PySide6.QtWidgets import (
     QApplication,
     QCheckBox,
@@ -920,6 +920,15 @@ def _log_crash() -> Path | None:
 def main() -> int:
     app = QApplication(sys.argv)
     app.setApplicationName("Chess Assistant")
+    icon = config.PROJECT / "assets" / "icons" / "assistant.ico"
+    if icon.exists():
+        app.setWindowIcon(QIcon(str(icon)))
+    try:
+        import ctypes
+
+        ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID("ChessHelper.Assistant")
+    except Exception:  # noqa: BLE001
+        pass
     try:
         window = MainWindow()
     except Exception as exc:  # noqa: BLE001
