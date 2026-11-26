@@ -118,6 +118,13 @@ class Handler(BaseHTTPRequestHandler):
         if path == "/api/ping":
             self._send_json({"ok": True, "engine": str(CFG["engine_path"])})
             return
+        if path in ("/health", "/healthz"):
+            self._send_json({"ok": True, "service": "chess-phone"})
+            return
+        if path == "/favicon.ico":
+            self.send_response(204)
+            self.end_headers()
+            return
         if path.startswith("/api/"):
             self.send_error(404, "unknown api")
             return
@@ -147,9 +154,10 @@ class Handler(BaseHTTPRequestHandler):
     def _new_game(self, body: dict) -> dict:
         level = int(body.get("level", 8))
         color = body.get("color", "w")
+        engine = bool(body.get("engine", True))
         board = chess.Board()
         payload = position_payload(board)
-        if color == "b":
+        if color == "b" and engine:
             move, san = play_engine(board, level)
             payload = position_payload(board)
             payload["engine_move"] = {"uci": move.uci() if move else "", "san": san}
@@ -160,6 +168,7 @@ class Handler(BaseHTTPRequestHandler):
     def _move(self, body: dict) -> dict:
         board = chess.Board(body["fen"])
         level = int(body.get("level", 8))
+        want_reply = bool(body.get("reply", True))
         uci = str(body.get("uci", ""))
         try:
             move = chess.Move.from_uci(uci)
@@ -172,7 +181,7 @@ class Handler(BaseHTTPRequestHandler):
 
         reply = None
         payload = position_payload(board)
-        if not payload["game_over"]:
+        if want_reply and not payload["game_over"]:
             engine_move, engine_san = play_engine(board, level)
             if engine_move is not None:
                 reply = {"uci": engine_move.uci(), "san": engine_san}
@@ -207,12 +216,13 @@ class Handler(BaseHTTPRequestHandler):
         board = chess.Board(body["fen"])
         level = int(body.get("level", 8))
         my_level = int(body.get("myLevel", 20))
+        want_reply = bool(body.get("reply", True))
         if board.is_game_over(claim_draw=True):
             return position_payload(board)
         move, san = play_engine(board, my_level)
         first = {"uci": move.uci() if move else "", "san": san}
         payload = position_payload(board)
-        if not payload["game_over"]:
+        if want_reply and not payload["game_over"]:
             reply, reply_san = play_engine(board, level)
             payload = position_payload(board)
             if reply is not None:

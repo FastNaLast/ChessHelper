@@ -18,10 +18,17 @@
     <div id="board" class="board"></div>
 
     <div class="row">
+      <select id="mode" aria-label="Режим">
+        <option value="engine">Против Stockfish</option>
+        <option value="local">Два игрока (анализ)</option>
+      </select>
+    </div>
+
+    <div class="row">
       <select id="level" aria-label="Уровень"></select>
       <select id="colorSide" aria-label="Цвет">
-        <option value="w">белые</option>
-        <option value="b">чёрные</option>
+        <option value="w">белые снизу</option>
+        <option value="b">чёрные снизу</option>
       </select>
       <button id="newGame">Новая</button>
     </div>

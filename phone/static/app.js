@@ -10,12 +10,14 @@ const evalEl = document.getElementById("eval");
 const hintEl = document.getElementById("hintText");
 const levelEl = document.getElementById("level");
 const colorEl = document.getElementById("colorSide");
+const modeEl = document.getElementById("mode");
 const promoEl = document.getElementById("promo");
 
 const S = {
   fen: START,
   level: 8,
   color: "w",
+  mode: "engine",
   turn: "w",
   legal: {},
   selected: null,
@@ -49,6 +51,11 @@ function parseFen(fen) {
 function isMine(piece) {
   const white = piece === piece.toUpperCase();
   return (S.color === "w") === white;
+}
+
+function isTurnPiece(piece) {
+  const white = piece === piece.toUpperCase();
+  return (S.turn === "w") === white;
 }
 
 function render() {
@@ -109,6 +116,11 @@ function updateStatus() {
     statusEl.textContent = "Партия окончена" + (S.result ? " — " + S.result : "");
     return;
   }
+  if (S.mode === "local") {
+    statusEl.textContent =
+      (S.turn === "w" ? "Ход белых" : "Ход чёрных") + (S.check ? " · шах" : "");
+    return;
+  }
   const mine = S.turn === S.color;
   statusEl.textContent = (mine ? "Твой ход" : "Ход Stockfish…") + (S.check ? " · шах" : "");
 }
@@ -159,7 +171,7 @@ function onSquare(name) {
     }
   }
 
-  if (piece && S.turn === S.color && isMine(piece)) {
+  if (piece && (S.mode === "local" || S.turn === S.color) && isTurnPiece(piece)) {
     S.selected = name;
     S.hint = null;
     render();
@@ -184,7 +196,12 @@ async function sendMove(uci) {
   S.selected = null;
   hintEl.textContent = "";
   try {
-    const payload = await api("/api/move", { fen: S.fen, uci, level: S.level });
+    const payload = await api("/api/move", {
+      fen: S.fen,
+      uci,
+      level: S.level,
+      reply: S.mode === "engine",
+    });
     S.history.push(S.fen);
     S.last = { from: uci.slice(0, 2), to: uci.slice(2, 4) };
     applyPayload(payload);
@@ -229,7 +246,12 @@ async function doBot() {
   S.hint = null;
   hintEl.textContent = "Stockfish играет за тебя…";
   try {
-    const payload = await api("/api/bot", { fen: S.fen, level: S.level, myLevel: 20 });
+    const payload = await api("/api/bot", {
+      fen: S.fen,
+      level: S.level,
+      myLevel: 20,
+      reply: S.mode === "engine",
+    });
     S.history.push(S.fen);
     applyPayload(payload);
     let text = "";
@@ -261,7 +283,11 @@ async function newGame() {
   hintEl.textContent = "";
   setBusy(true);
   try {
-    const payload = await api("/api/new", { color: S.color, level: S.level });
+    const payload = await api("/api/new", {
+      color: S.color,
+      level: S.level,
+      engine: S.mode === "engine",
+    });
     applyPayload(payload);
     if (payload.engine_move && payload.engine_move.uci) {
       S.last = { from: payload.engine_move.uci.slice(0, 2), to: payload.engine_move.uci.slice(2, 4) };
@@ -278,8 +304,10 @@ async function newGame() {
 async function doUndo() {
   if (S.busy || !S.history.length) return;
   let fen = S.history.pop();
-  while (S.history.length && fen.split(" ")[1] !== S.color) {
-    fen = S.history.pop();
+  if (S.mode === "engine") {
+    while (S.history.length && fen.split(" ")[1] !== S.color) {
+      fen = S.history.pop();
+    }
   }
   setBusy(true);
   S.hint = null;
@@ -321,5 +349,16 @@ colorEl.addEventListener("change", () => {
   S.color = colorEl.value;
   render();
 });
+
+function applyMode() {
+  S.mode = modeEl.value;
+  levelEl.disabled = S.mode === "local";
+  document.getElementById("botBtn").textContent =
+    S.mode === "local" ? "Сыграть лучший" : "Ход за меня";
+  render();
+}
+
+modeEl.addEventListener("change", applyMode);
+applyMode();
 
 newGame();

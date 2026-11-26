@@ -465,15 +465,23 @@ class MainWindow(QWidget):
         win = self.cfg.get("window", {})
         width = int(win.get("w") or 470)
         height = int(win.get("h") or 720)
-        screen = QGuiApplication.primaryScreen()
-        available = screen.availableGeometry() if screen else None
+        screens = QGuiApplication.screens()
+        available = screens[0].availableGeometry() if screens else None
+        if available is not None:
+            width = min(width, max(320, available.width() - 24))
+            height = min(height, max(360, available.height() - 24))
         x = win.get("x")
         y = win.get("y")
+        if x is not None and y is not None:
+            x, y = int(x), int(y)
+            center = QPoint(x + width // 2, y + height // 2)
+            if QGuiApplication.screenAt(center) is None:
+                x = y = None
         if x is None and available is not None:
             x = available.right() - width - 16
         if y is None and available is not None:
             y = available.top() + 40
-        self.setGeometry(int(x or 100), int(y or 100), width, height)
+        self.setGeometry(int(x if x is not None else 100), int(y if y is not None else 100), width, height)
 
     def mousePressEvent(self, event) -> None:  # noqa: N802
         if event.button() == Qt.MouseButton.LeftButton and event.position().y() < 40:
@@ -897,9 +905,34 @@ class MainWindow(QWidget):
         super().closeEvent(event)
 
 
+def _log_crash() -> Path | None:
+    import traceback
+
+    try:
+        config.REPORTS.mkdir(parents=True, exist_ok=True)
+        target = config.REPORTS / "last-error.txt"
+        target.write_text(traceback.format_exc(), encoding="utf-8")
+        return target
+    except Exception:  # noqa: BLE001
+        return None
+
+
 def main() -> int:
     app = QApplication(sys.argv)
     app.setApplicationName("Chess Assistant")
-    window = MainWindow()
+    try:
+        window = MainWindow()
+    except Exception as exc:  # noqa: BLE001
+        target = _log_crash()
+        where = target or "reports\\last-error.txt"
+        try:
+            QMessageBox.critical(
+                None,
+                "Шахматный помощник",
+                f"Не удалось запуститься:\n{exc}\n\nПодробности: {where}",
+            )
+        except Exception:  # noqa: BLE001
+            pass
+        return 1
     window.show()
     return app.exec()
