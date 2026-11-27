@@ -19,6 +19,15 @@ class Opening:
     english: str
     moves: tuple[str, ...]
     aliases: tuple[str, ...] = ()
+    side: str = "w"  # w — за белых, b — за чёрных, both — подходит обоим
+
+    @property
+    def side_label(self) -> str:
+        return {"w": "белые", "b": "чёрные", "both": "оба"}.get(self.side, "белые")
+
+    def fits(self, side: str | None) -> bool:
+        """side: None — все, «w»/«b» — с учётом общих линий."""
+        return side is None or self.side == side or self.side == "both"
 
     @property
     def line(self) -> str:
@@ -39,8 +48,8 @@ class Opening:
         return board
 
 
-def _o(eco: str, name: str, english: str, moves: str, *aliases: str) -> Opening:
-    return Opening(eco, name, english, tuple(moves.split()), tuple(aliases))
+def _o(eco: str, name: str, english: str, moves: str, *aliases: str, side: str = "w") -> Opening:
+    return Opening(eco, name, english, tuple(moves.split()), tuple(aliases), side)
 
 
 # fmt: off
@@ -51,30 +60,30 @@ LIBRARY: tuple[Opening, ...] = (
     _o("A48", "Лондонская против Nf6", "London System vs Nf6", "d4 Nf6 Bf4", "лондон"),
     _o("D04", "Система Колле", "Colle System", "d4 d5 Nf3 Nf6 e3", "колле"),
     _o("D06", "Ферзевый гамбит", "Queen's Gambit", "d4 d5 c4", "ферзевый"),
-    _o("D30", "Отказанный ферзевый гамбит", "Queen's Gambit Declined", "d4 d5 c4 e6", "ОФГ", "QGD"),
-    _o("D20", "Принятый ферзевый гамбит", "Queen's Gambit Accepted", "d4 d5 c4 dxc4", "ПФГ", "QGA"),
-    _o("D50", "Ортодоксальная защита", "Orthodox Defense", "d4 d5 c4 e6 Nc3 Nf6 Bg5", "ортодокс"),
-    _o("D10", "Славянская защита", "Slav Defense", "d4 d5 c4 c6", "славянка"),
-    _o("D13", "Славянская, обмен", "Slav Exchange", "d4 d5 c4 c6 cxd5 cxd5"),
-    _o("D48", "Меранский вариант", "Meran Variation", "d4 d5 c4 c6 Nf3 Nf6 Nc3 e6 e3 Nbd7 Bd3 dxc4 Bxc4 b5", "меран"),
+    _o("D30", "Отказанный ферзевый гамбит", "Queen's Gambit Declined", "d4 d5 c4 e6", "ОФГ", "QGD", side="b"),
+    _o("D20", "Принятый ферзевый гамбит", "Queen's Gambit Accepted", "d4 d5 c4 dxc4", "ПФГ", "QGA", side="b"),
+    _o("D50", "Ортодоксальная защита", "Orthodox Defense", "d4 d5 c4 e6 Nc3 Nf6 Bg5", "ортодокс", side="b"),
+    _o("D10", "Славянская защита", "Slav Defense", "d4 d5 c4 c6", "славянка", side="b"),
+    _o("D13", "Славянская, обмен", "Slav Exchange", "d4 d5 c4 c6 cxd5 cxd5", side="b"),
+    _o("D48", "Меранский вариант", "Meran Variation", "d4 d5 c4 c6 Nf3 Nf6 Nc3 e6 e3 Nbd7 Bd3 dxc4 Bxc4 b5", "меран", side="b"),
     _o("E00", "Каталонское начало", "Catalan Opening", "d4 Nf6 c4 e6 Nf3 d5 g3", "каталон"),
     _o("E01", "Каталонское, открытое", "Open Catalan", "d4 Nf6 c4 e6 g3 d5 Bg2 dxc4"),
-    _o("E20", "Защита Нимцовича", "Nimzo-Indian Defense", "d4 Nf6 c4 e6 Nc3 Bb4", "нимцов", "нимцович"),
-    _o("E20", "Нимцович, Цюрихский вариант", "Nimzo Zurich", "d4 Nf6 c4 e6 Nc3 Bb4 e3 O-O Bd3 d5 Nf3 c5", "цюрих"),
-    _o("E60", "Староиндийская защита", "King's Indian Defense", "d4 Nf6 c4 g6 Nc3 Bg7 e4 d6", "староиндийская", "королевско-индийская", "КИД", "KID"),
-    _o("E76", "Староиндийская, четыре пешки", "Four Pawns Attack", "d4 Nf6 c4 g6 Nc3 Bg7 e4 d6 f4", "четыре пешки"),
-    _o("E90", "Староиндийская, классика", "KID Classical", "d4 Nf6 c4 g6 Nc3 Bg7 e4 d6 Nf3 O-O Be2 e5 O-O", "классическая КИД"),
-    _o("E12", "Новоиндийская защита", "Queen's Indian Defense", "d4 Nf6 c4 e6 Nf3 b6", "новоиндийская"),
-    _o("D80", "Защита Грюнфельда", "Grünfeld Defense", "d4 Nf6 c4 g6 Nc3 d5", "грюнфельд", "grunfeld"),
-    _o("D85", "Грюнфельд, обмен", "Grünfeld Exchange", "d4 Nf6 c4 g6 Nc3 d5 cxd5 Nxd5 e4 Nxc3 bxc3"),
-    _o("A56", "Защита Бенони", "Benoni Defense", "d4 Nf6 c4 c5 d5", "бенони"),
-    _o("A60", "Современный Бенони", "Modern Benoni", "d4 Nf6 c4 c5 d5 e6"),
-    _o("A80", "Голландская защита", "Dutch Defense", "d4 f5", "голландка", "dutch"),
-    _o("A87", "Голландская, ленинградская", "Leningrad Dutch", "d4 f5 c4 Nf6 Nc3 g6", "ленинградка"),
-    _o("A90", "Голландская, классическая", "Classical Dutch", "d4 f5 c4 e6 Nf3 Nf6 g3"),
-    _o("A51", "Будапештский гамбит", "Budapest Gambit", "d4 Nf6 c4 e5", "будапешт"),
+    _o("E20", "Защита Нимцовича", "Nimzo-Indian Defense", "d4 Nf6 c4 e6 Nc3 Bb4", "нимцов", "нимцович", side="b"),
+    _o("E20", "Нимцович, Цюрихский вариант", "Nimzo Zurich", "d4 Nf6 c4 e6 Nc3 Bb4 e3 O-O Bd3 d5 Nf3 c5", "цюрих", side="both"),
+    _o("E60", "Староиндийская защита", "King's Indian Defense", "d4 Nf6 c4 g6 Nc3 Bg7 e4 d6", "староиндийская", "королевско-индийская", "КИД", "KID", side="b"),
+    _o("E76", "Староиндийская, четыре пешки", "Four Pawns Attack", "d4 Nf6 c4 g6 Nc3 Bg7 e4 d6 f4", "четыре пешки", side="both"),
+    _o("E90", "Староиндийская, классика", "KID Classical", "d4 Nf6 c4 g6 Nc3 Bg7 e4 d6 Nf3 O-O Be2 e5 O-O", "классическая КИД", side="b"),
+    _o("E12", "Новоиндийская защита", "Queen's Indian Defense", "d4 Nf6 c4 e6 Nf3 b6", "новоиндийская", side="b"),
+    _o("D80", "Защита Грюнфельда", "Grünfeld Defense", "d4 Nf6 c4 g6 Nc3 d5", "грюнфельд", "grunfeld", side="b"),
+    _o("D85", "Грюнфельд, обмен", "Grünfeld Exchange", "d4 Nf6 c4 g6 Nc3 d5 cxd5 Nxd5 e4 Nxc3 bxc3", side="both"),
+    _o("A56", "Защита Бенони", "Benoni Defense", "d4 Nf6 c4 c5 d5", "бенони", side="b"),
+    _o("A60", "Современный Бенони", "Modern Benoni", "d4 Nf6 c4 c5 d5 e6", side="b"),
+    _o("A80", "Голландская защита", "Dutch Defense", "d4 f5", "голландка", "dutch", side="b"),
+    _o("A87", "Голландская, ленинградская", "Leningrad Dutch", "d4 f5 c4 Nf6 Nc3 g6", "ленинградка", side="b"),
+    _o("A90", "Голландская, классическая", "Classical Dutch", "d4 f5 c4 e6 Nf3 Nf6 g3", side="b"),
+    _o("A51", "Будапештский гамбит", "Budapest Gambit", "d4 Nf6 c4 e5", "будапешт", side="b"),
     _o("A45", "Дебют Тромповского", "Trompowsky Attack", "d4 Nf6 Bg5", "тромповский", "тромп"),
-    _o("D08", "Контргамбит Альбина", "Albin Countergambit", "d4 d5 c4 e5", "альбин"),
+    _o("D08", "Контргамбит Альбина", "Albin Countergambit", "d4 d5 c4 e5", "альбин", side="b"),
 
     # --- ферзевый фланг -------------------------------------------------
     _o("A10", "Английское начало", "English Opening", "c4", "английское", "англ"),
@@ -88,61 +97,61 @@ LIBRARY: tuple[Opening, ...] = (
     _o("A00", "Дебют Гроба", "Grob's Attack", "g4", "гроб", "grob"),
 
     # --- открытые начала ------------------------------------------------
-    _o("B00", "Королевская пешка", "King's Pawn Game", "e4 e5", "e4 e5", "открытая партия"),
+    _o("B00", "Королевская пешка", "King's Pawn Game", "e4 e5", "e4 e5", "открытая партия", side="both"),
     _o("C60", "Испанская партия", "Ruy Lopez", "e4 e5 Nf3 Nc6 Bb5", "испанка", "испанская", "руй лопес", "руй"),
-    _o("C65", "Испанская, берлинская", "Berlin Defense", "e4 e5 Nf3 Nc6 Bb5 Nf6", "берлин"),
+    _o("C65", "Испанская, берлинская", "Berlin Defense", "e4 e5 Nf3 Nc6 Bb5 Nf6", "берлин", "испанка", side="both"),
     _o("C84", "Испанская, закрытая", "Closed Ruy Lopez", "e4 e5 Nf3 Nc6 Bb5 a6 Ba4 Nf6 O-O Be7 Re1 b5 Bb3 d6 c3 O-O", "закрытая испанка"),
     _o("C80", "Испанская, открытая", "Open Ruy Lopez", "e4 e5 Nf3 Nc6 Bb5 a6 Ba4 Nf6 O-O Nxe4", "открытая испанка"),
     _o("C68", "Испанская, размен", "Exchange Ruy Lopez", "e4 e5 Nf3 Nc6 Bb5 a6 Bxc6", "разменная испанка"),
     _o("C50", "Итальянская партия", "Italian Game", "e4 e5 Nf3 Nc6 Bc4", "итальянка", "итальянская"),
     _o("C50", "Итальянская, джиуоко пиано", "Giuoco Piano", "e4 e5 Nf3 Nc6 Bc4 Bc5", "пиано", "тихая итальянка"),
     _o("C50", "Итальянская, пианиссимо", "Giuoco Pianissimo", "e4 e5 Nf3 Nc6 Bc4 Bc5 d3", "пианиссимо"),
-    _o("C55", "Защита двух коней", "Two Knights Defense", "e4 e5 Nf3 Nc6 Bc4 Nf6", "два коня"),
+    _o("C55", "Защита двух коней", "Two Knights Defense", "e4 e5 Nf3 Nc6 Bc4 Nf6", "два коня", side="b"),
     _o("C45", "Шотландская партия", "Scotch Game", "e4 e5 Nf3 Nc6 d4", "шотландка", "шотландская"),
     _o("C45", "Шотландская, Мизес", "Scotch Mieses", "e4 e5 Nf3 Nc6 d4 exd4 Nxd4", "мизес"),
     _o("C25", "Венская партия", "Vienna Game", "e4 e5 Nc3", "венская", "венка"),
     _o("C29", "Венский гамбит", "Vienna Gambit", "e4 e5 Nc3 Nf6 f4", "венский гамбит"),
     _o("C30", "Королевский гамбит", "King's Gambit", "e4 e5 f4", "королевский гамбит", "КГ"),
     _o("C33", "Королевский гамбит, принятый", "King's Gambit Accepted", "e4 e5 f4 exf4", "принятый КГ"),
-    _o("C31", "Королевский гамбит, Фалькбеер", "Falkbeer Countergambit", "e4 e5 f4 d5", "фалькбеер"),
+    _o("C31", "Королевский гамбит, Фалькбеер", "Falkbeer Countergambit", "e4 e5 f4 d5", "фалькбеер", side="both"),
     _o("C51", "Гамбит Эванса", "Evans Gambit", "e4 e5 Nf3 Nc6 Bc4 Bc5 b4", "эванс"),
     _o("C23", "Дебют слона", "Bishop's Opening", "e4 e5 Bc4", "слона"),
     _o("C21", "Центральная партия", "Center Game", "e4 e5 d4 exd4", "центральный гамбит", "центр"),
     _o("C21", "Датский гамбит", "Danish Gambit", "e4 e5 d4 exd4 c3", "датский"),
     _o("C44", "Дебют Понциани", "Ponziani Opening", "e4 e5 Nf3 Nc6 c3", "понциани"),
-    _o("C42", "Русская партия", "Petrov Defense", "e4 e5 Nf3 Nf6", "петров", "русская"),
-    _o("C47", "Дебют четырёх коней", "Four Knights Game", "e4 e5 Nf3 Nc6 Nc3 Nf6", "четыре коня"),
+    _o("C42", "Русская партия", "Petrov Defense", "e4 e5 Nf3 Nf6", "петров", "русская", side="b"),
+    _o("C47", "Дебют четырёх коней", "Four Knights Game", "e4 e5 Nf3 Nc6 Nc3 Nf6", "четыре коня", side="both"),
 
     # --- сицилианская ---------------------------------------------------
-    _o("B20", "Сицилианская защита", "Sicilian Defense", "e4 c5", "сицилианка", "сицилианская"),
-    _o("B90", "Сицилианская, Найдорф", "Najdorf Variation", "e4 c5 Nf3 d6 d4 cxd4 Nxd4 Nf6 Nc3 a6", "найдорф"),
-    _o("B70", "Сицилианская, дракон", "Dragon Variation", "e4 c5 Nf3 d6 d4 cxd4 Nxd4 Nf6 Nc3 g6", "дракон"),
-    _o("B76", "Дракон, югославская атака", "Yugoslav Attack", "e4 c5 Nf3 d6 d4 cxd4 Nxd4 Nf6 Nc3 g6 Be3 Bg7 f3 O-O Qd2 Nc6 Bc4", "югославка"),
-    _o("B40", "Сицилианская, Паульсен", "Paulsen Variation", "e4 c5 Nf3 e6 d4 cxd4 Nxd4 Nc6", "паульсен"),
-    _o("B47", "Сицилианская, Тайманов", "Taimanov Variation", "e4 c5 Nf3 e6 d4 cxd4 Nxd4 Nc6 Nc3 Qc7", "тайманов"),
-    _o("B33", "Сицилианская, Свешников", "Sveshnikov Variation", "e4 c5 Nf3 Nc6 d4 cxd4 Nxd4 Nf6 Nc3 e5", "свешников"),
-    _o("B31", "Сицилианская, Россолимо", "Rossolimo Variation", "e4 c5 Nf3 Nc6 Bb5", "россолимо"),
-    _o("B23", "Сицилианская, закрытая", "Closed Sicilian", "e4 c5 Nc3", "закрытая сицилианка"),
-    _o("B22", "Сицилианская, Алапин", "Alapin Variation", "e4 c5 c3", "алапин"),
-    _o("B21", "Сицилианская, Смит-Морра", "Smith-Morra Gambit", "e4 c5 d4 cxd4 c3", "смит морра", "морра"),
+    _o("B20", "Сицилианская защита", "Sicilian Defense", "e4 c5", "сицилианка", "сицилианская", side="b"),
+    _o("B90", "Сицилианская, Найдорф", "Najdorf Variation", "e4 c5 Nf3 d6 d4 cxd4 Nxd4 Nf6 Nc3 a6", "найдорф", side="b"),
+    _o("B70", "Сицилианская, дракон", "Dragon Variation", "e4 c5 Nf3 d6 d4 cxd4 Nxd4 Nf6 Nc3 g6", "дракон", side="b"),
+    _o("B76", "Дракон, югославская атака", "Yugoslav Attack", "e4 c5 Nf3 d6 d4 cxd4 Nxd4 Nf6 Nc3 g6 Be3 Bg7 f3 O-O Qd2 Nc6 Bc4", "югославка", side="both"),
+    _o("B40", "Сицилианская, Паульсен", "Paulsen Variation", "e4 c5 Nf3 e6 d4 cxd4 Nxd4 Nc6", "паульсен", side="b"),
+    _o("B47", "Сицилианская, Тайманов", "Taimanov Variation", "e4 c5 Nf3 e6 d4 cxd4 Nxd4 Nc6 Nc3 Qc7", "тайманов", side="b"),
+    _o("B33", "Сицилианская, Свешников", "Sveshnikov Variation", "e4 c5 Nf3 Nc6 d4 cxd4 Nxd4 Nf6 Nc3 e5", "свешников", side="b"),
+    _o("B31", "Сицилианская, Россолимо", "Rossolimo Variation", "e4 c5 Nf3 Nc6 Bb5", "россолимо", "сицилианка", side="both"),
+    _o("B23", "Сицилианская, закрытая", "Closed Sicilian", "e4 c5 Nc3", "закрытая сицилианка", "сицилианка", side="both"),
+    _o("B22", "Сицилианская, Алапин", "Alapin Variation", "e4 c5 c3", "алапин", "сицилианка", side="both"),
+    _o("B21", "Сицилианская, Смит-Морра", "Smith-Morra Gambit", "e4 c5 d4 cxd4 c3", "смит морра", "морра", "сицилианка", side="both"),
 
     # --- французская и Каро-Канн ----------------------------------------
-    _o("C00", "Французская защита", "French Defense", "e4 e6", "француз", "французская"),
-    _o("C11", "Французская, классическая", "French Classical", "e4 e6 d4 d5 Nc3 Nf6", "классическая французская"),
-    _o("C15", "Французская, Винавер", "Winawer Variation", "e4 e6 d4 d5 Nc3 Bb4", "винавер"),
-    _o("C03", "Французская, Тарраш", "Tarrasch Variation", "e4 e6 d4 d5 Nd2", "тарраш"),
-    _o("C01", "Французская, размен", "French Exchange", "e4 e6 d4 d5 exd5 exd5", "разменная французская"),
-    _o("B10", "Защита Каро-Канн", "Caro-Kann Defense", "e4 c6", "каро", "каро канн", "кароканн"),
-    _o("B18", "Каро-Канн, классический", "Caro-Kann Classical", "e4 c6 d4 d5 Nc3 dxe4 Nxe4 Bf5", "классический каро"),
-    _o("B13", "Каро-Канн, атака Панова", "Panov Attack", "e4 c6 d4 d5 exd5 cxd5 c4", "панов"),
-    _o("B13", "Каро-Канн, размен", "Caro-Kann Exchange", "e4 c6 d4 d5 exd5 cxd5", "разменный каро"),
+    _o("C00", "Французская защита", "French Defense", "e4 e6", "француз", "французская", side="b"),
+    _o("C11", "Французская, классическая", "French Classical", "e4 e6 d4 d5 Nc3 Nf6", "классическая французская", side="b"),
+    _o("C15", "Французская, Винавер", "Winawer Variation", "e4 e6 d4 d5 Nc3 Bb4", "винавер", side="b"),
+    _o("C03", "Французская, Тарраш", "Tarrasch Variation", "e4 e6 d4 d5 Nd2", "тарраш", side="both"),
+    _o("C01", "Французская, размен", "French Exchange", "e4 e6 d4 d5 exd5 exd5", "разменная французская", side="b"),
+    _o("B10", "Защита Каро-Канн", "Caro-Kann Defense", "e4 c6", "каро", "каро канн", "кароканн", side="b"),
+    _o("B18", "Каро-Канн, классический", "Caro-Kann Classical", "e4 c6 d4 d5 Nc3 dxe4 Nxe4 Bf5", "классический каро", side="b"),
+    _o("B13", "Каро-Канн, атака Панова", "Panov Attack", "e4 c6 d4 d5 exd5 cxd5 c4", "панов", side="both"),
+    _o("B13", "Каро-Канн, размен", "Caro-Kann Exchange", "e4 c6 d4 d5 exd5 cxd5", "разменный каро", side="b"),
 
     # --- прочие ответы на e4 --------------------------------------------
-    _o("B01", "Скандинавская защита", "Scandinavian Defense", "e4 d5", "скандинавка", "скандинавская"),
-    _o("B01", "Скандинавская, Ферзь на a5", "Scandinavian Qa5", "e4 d5 exd5 Qxd5 Nc3 Qa5", "скандинавская Qa5"),
-    _o("B02", "Защита Алехина", "Alekhine Defense", "e4 Nf6", "алехин"),
-    _o("B07", "Защита Пирца", "Pirc Defense", "e4 d6 d4 Nf6 Nc3 g6", "пирц"),
-    _o("B06", "Современная защита", "Modern Defense", "e4 g6 d4 Bg7", "современная"),
+    _o("B01", "Скандинавская защита", "Scandinavian Defense", "e4 d5", "скандинавка", "скандинавская", side="b"),
+    _o("B01", "Скандинавская, Ферзь на a5", "Scandinavian Qa5", "e4 d5 exd5 Qxd5 Nc3 Qa5", "скандинавская Qa5", side="b"),
+    _o("B02", "Защита Алехина", "Alekhine Defense", "e4 Nf6", "алехин", side="b"),
+    _o("B07", "Защита Пирца", "Pirc Defense", "e4 d6 d4 Nf6 Nc3 g6", "пирц", side="b"),
+    _o("B06", "Современная защита", "Modern Defense", "e4 g6 d4 Bg7", "современная", side="b"),
 )
 # fmt: on
 
@@ -168,15 +177,20 @@ def _as_line(query: str) -> str | None:
     return None
 
 
-def search(query: str, limit: int = 40) -> list[Opening]:
-    """Поиск по названию, псевдонимам или началу партии."""
+def search(query: str, limit: int = 40, side: str | None = None) -> list[Opening]:
+    """Поиск по названию, псевдонимам или началу партии.
+
+    side: None — все дебюты, «w» — за белых, «b» — за чёрных. Линии с пометкой
+    «both» показываются в обеих подборках.
+    """
     q = _norm(query)
+    pool = [opening for opening in LIBRARY if opening.fits(side)]
     if not q:
-        return list(LIBRARY[:limit])
+        return pool[:limit]
 
     line = _as_line(q)
     scored: list[tuple[int, Opening]] = []
-    for opening in LIBRARY:
+    for opening in pool:
         score = 0
         name = _norm(opening.name)
         english = _norm(opening.english)

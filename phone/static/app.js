@@ -10,7 +10,8 @@ const evalEl = document.getElementById("eval");
 const hintEl = document.getElementById("hintText");
 const levelEl = document.getElementById("level");
 const colorEl = document.getElementById("colorSide");
-const modeEl = document.getElementById("mode");
+const modeButtons = Array.from(document.querySelectorAll(".mode-btn"));
+const modeHintEl = document.getElementById("modeHint");
 const promoEl = document.getElementById("promo");
 
 const S = {
@@ -151,6 +152,7 @@ function setBusy(busy) {
   for (const id of ["hintBtn", "botBtn", "undoBtn", "newGame"]) {
     document.getElementById(id).disabled = busy;
   }
+  for (const btn of modeButtons) btn.disabled = busy;
 }
 
 function onSquare(name) {
@@ -293,6 +295,7 @@ async function newGame() {
       S.last = { from: payload.engine_move.uci.slice(0, 2), to: payload.engine_move.uci.slice(2, 4) };
     }
     evalEl.textContent = "+0.00";
+    modeHintEl.textContent = modeHintText(S.mode);
     render();
   } catch (error) {
     hintEl.textContent = "Ошибка: " + error.message;
@@ -350,15 +353,33 @@ colorEl.addEventListener("change", () => {
   render();
 });
 
-function applyMode() {
-  S.mode = modeEl.value;
-  levelEl.disabled = S.mode === "local";
+const MODE_HINTS = {
+  engine: "Ты против Stockfish. Уровень и цвет — ниже.",
+  local: "Ходи и белыми, и чёрными. «Подсказка» — за того, чей ход.",
+};
+
+function modeHintText(mode) {
+  return MODE_HINTS[mode] + " Смена режима — новая партия.";
+}
+
+function applyMode(mode) {
+  S.mode = mode;
+  for (const btn of modeButtons) btn.classList.toggle("is-on", btn.dataset.mode === mode);
+  levelEl.disabled = mode === "local";
   document.getElementById("botBtn").textContent =
-    S.mode === "local" ? "Сыграть лучший" : "Ход за меня";
+    mode === "local" ? "Сыграть лучший" : "Ход за меня";
+  modeHintEl.textContent = modeHintText(mode);
   render();
 }
 
-modeEl.addEventListener("change", applyMode);
-applyMode();
+for (const btn of modeButtons) {
+  btn.addEventListener("click", () => {
+    if (S.mode === btn.dataset.mode) return;
+    applyMode(btn.dataset.mode);
+    newGame();
+  });
+}
+
+applyMode("engine");
 
 newGame();

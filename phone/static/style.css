@@ -120,6 +120,29 @@ header {
   gap: 6px;
 }
 
+.modes {
+  display: flex;
+  gap: 6px;
+}
+
+.mode-btn {
+  font-weight: 500;
+}
+
+.mode-btn.is-on {
+  background: #2f5d34;
+  border-color: #57b36b;
+  color: #ffffff;
+  font-weight: 600;
+}
+
+.mode-hint {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.35;
+  margin-top: -2px;
+}
+
 select, button {
   font: inherit;
   color: var(--text);

@@ -58,6 +58,9 @@ QPushButton#primary { background: #3B6E3B; border-color: #4C8A4C; font-weight: b
 QPushButton#primary:hover { background: #478347; }
 QToolButton { background: transparent; border: none; font-size: 14px; padding: 2px 6px; }
 QToolButton:hover { background: #2F3136; border-radius: 4px; }
+QToolButton#chip { background: #26282C; border: 1px solid #34363B; border-radius: 10px; padding: 1px 10px; font-size: 11px; }
+QToolButton#chip:hover { background: #33363C; }
+QToolButton#chip:checked { background: #3B6E3B; border-color: #57B36B; color: #FFFFFF; }
 QLabel#title { font-weight: bold; font-size: 13px; }
 QLabel#hint { color: #9AA0A6; }
 """
@@ -342,7 +345,7 @@ class MainWindow(QWidget):
 
         hint = QLabel(
             f"Библиотека дебютов ({len(openings.LIBRARY)} линий): напиши название — "
-            "файлы не нужны. Можно искать по ходам: «e4 c5»."
+            "файлы не нужны. Можно искать по ходам: «e4 c5». Фильтр по цвету — ниже."
         )
         hint.setObjectName("hint")
         hint.setWordWrap(True)
@@ -354,6 +357,31 @@ class MainWindow(QWidget):
         self.open_search.textChanged.connect(self._filter_openings)
         self.open_search.returnPressed.connect(self.load_opening)
         layout.addWidget(self.open_search)
+
+        side_row = QHBoxLayout()
+        side_row.setSpacing(4)
+        self.side_buttons: dict[str, QToolButton] = {}
+        for key, text, tip in (
+            ("all", "Все", "Показать все дебюты"),
+            ("w", "Белые", "Дебюты, которые играют белые"),
+            ("b", "Чёрные", "Дебюты, которые играют чёрные"),
+        ):
+            btn = QToolButton()
+            btn.setText(text)
+            btn.setObjectName("chip")
+            btn.setCheckable(True)
+            btn.setAutoExclusive(True)
+            btn.setToolTip(tip)
+            btn.clicked.connect(lambda _checked=False, side=key: self._set_opening_side(side))
+            side_row.addWidget(btn)
+            self.side_buttons[key] = btn
+        self.side_buttons["all"].setChecked(True)
+        self.opening_side = "all"
+        side_row.addStretch(1)
+        self.open_count = QLabel("")
+        self.open_count.setObjectName("hint")
+        side_row.addWidget(self.open_count)
+        layout.addLayout(side_row)
 
         self.open_list = QListWidget()
         self.open_list.setMaximumHeight(138)
@@ -736,16 +764,25 @@ class MainWindow(QWidget):
         self._set_status(f"Сохранено: {target}")
 
     # ----------------------------------------------------------- repertoire
+    def _set_opening_side(self, side: str) -> None:
+        self.opening_side = side
+        self._filter_openings()
+
     def _filter_openings(self) -> None:
         query = self.open_search.text().strip()
-        hits = openings.search(query)
+        side = None if self.opening_side == "all" else self.opening_side
+        hits = openings.search(query, limit=200, side=side)
         self.open_list.clear()
         for opening in hits:
-            item = QListWidgetItem(f"{opening.name} · {opening.eco}\n{opening.line}")
+            item = QListWidgetItem(
+                f"{opening.name} · {opening.eco} · {opening.side_label}\n{opening.line}"
+            )
             item.setData(Qt.UserRole, opening)
-            item.setToolTip(f"{opening.english}\n{opening.line}")
+            item.setToolTip(f"{opening.english} · {opening.side_label}\n{opening.line}")
             item.setSizeHint(QSize(0, 44))
             self.open_list.addItem(item)
+        if hasattr(self, "open_count"):
+            self.open_count.setText(f"{len(hits)} из {len(openings.LIBRARY)}")
         if hits:
             self.open_list.setCurrentRow(0)
         elif query:

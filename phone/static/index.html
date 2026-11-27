@@ -17,12 +17,11 @@
     <div id="status" class="status">Ход белых</div>
     <div id="board" class="board"></div>
 
-    <div class="row">
-      <select id="mode" aria-label="Режим">
-        <option value="engine">Против Stockfish</option>
-        <option value="local">Два игрока (анализ)</option>
-      </select>
+    <div class="modes" role="group" aria-label="Режим игры">
+      <button type="button" class="mode-btn is-on" data-mode="engine">Со Stockfish</button>
+      <button type="button" class="mode-btn" data-mode="local">Игра вдвоём</button>
     </div>
+    <div id="modeHint" class="mode-hint"></div>
 
     <div class="row">
       <select id="level" aria-label="Уровень"></select>
