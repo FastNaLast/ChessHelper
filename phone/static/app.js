@@ -127,12 +127,27 @@ function updateStatus() {
 }
 
 async function api(path, body) {
-  const response = await fetch(path, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body || {}),
-  });
-  const data = await response.json();
+  let response;
+  try {
+    response = await fetch(path, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body || {}),
+    });
+  } catch (error) {
+    throw new Error(
+      "нет связи с компьютером. На ПК запусти ярлык «Шахматы на телефоне» " +
+        "и проверь, что телефон в той же Wi-Fi"
+    );
+  }
+  let data;
+  try {
+    data = await response.json();
+  } catch (error) {
+    throw new Error(
+      "сервер на ПК ответил ошибкой " + response.status + ". Перезапусти его на компьютере"
+    );
+  }
   if (data.error) throw new Error(data.error);
   return data;
 }

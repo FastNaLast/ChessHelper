@@ -434,8 +434,10 @@ class MainWindow(QWidget):
         layout.setSpacing(6)
 
         hint = QLabel(
-            "Телефон над доской: поставь IP Webcam (Android) или DroidCam, возьми URL потока. "
-            "IP Webcam: http://ТЕЛЕФОН:8080/video   DroidCam: http://ТЕЛЕФОН:4747/video"
+            "Телефон над доской: поставь на него IP Webcam (Android) или DroidCam и нажми там «Запустить». "
+            "IP Webcam покажет на экране телефона адрес вида http://192.168.0.100:8080 — "
+            "вставь его сюда и добавь /video. Потом «Подключить».\n"
+            "IP Webcam: http://ТЕЛЕФОН:8080/video   ·   DroidCam: http://ТЕЛЕФОН:4747/video"
         )
         hint.setObjectName("hint")
         hint.setWordWrap(True)
@@ -443,6 +445,11 @@ class MainWindow(QWidget):
 
         row = QHBoxLayout()
         self.cam_url = QLineEdit(self.cfg["camera"]["url"])
+        self.cam_url.setPlaceholderText("http://192.168.0.100:8080/video")
+        self.cam_url.setToolTip(
+            "Адрес потока с телефона. Его показывает сам IP Webcam/DroidCam. "
+            "Для IP Webcam добавь в конце /video."
+        )
         row.addWidget(self.cam_url, 1)
         self.cam_btn = QPushButton("Подключить")
         self.cam_btn.clicked.connect(self.toggle_camera)
