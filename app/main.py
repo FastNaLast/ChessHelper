@@ -36,7 +36,6 @@ from PySide6.QtWidgets import (
 
 from . import config, openings
 from .board_widget import BoardView
-from .camera import FrameView, StreamReader, draw_grid, np_to_qimage, split_cells, warp_board
 from .capture import RegionSelector, grab_region
 from .engine import Analyzer
 from .hotkey import GlobalHotkey
@@ -120,8 +119,6 @@ class MainWindow(QWidget):
         self._drag_offset: QPoint | None = None
         self._job: AnalyseJob | None = None
         self._report_job: ReportJob | None = None
-        self._stream: StreamReader | None = None
-        self._warp_label: QLabel | None = None
         self.pgn_text = ""
         self._last_report_markdown = ""
 
@@ -180,7 +177,6 @@ class MainWindow(QWidget):
         self.tabs.addTab(self._build_analysis_tab(), "Анализ")
         self.tabs.addTab(self._build_pgn_tab(), "Партия")
         self.tabs.addTab(self._build_book_tab(), "Дебют")
-        self.tabs.addTab(self._build_camera_tab(), "Камера")
         self.tabs.addTab(self._build_screen_tab(), "Экран")
         root.addWidget(self.tabs, 1)
 
@@ -426,63 +422,6 @@ class MainWindow(QWidget):
         layout.addWidget(self.book_log, 1)
 
         self._filter_openings()
-        return page
-
-    def _build_camera_tab(self) -> QWidget:
-        page = QWidget()
-        layout = QVBoxLayout(page)
-        layout.setSpacing(6)
-
-        hint = QLabel(
-            "Телефон над доской: поставь на него IP Webcam (Android) или DroidCam и нажми там «Запустить». "
-            "IP Webcam покажет на экране телефона адрес вида http://192.168.0.100:8080 — "
-            "вставь его сюда и добавь /video. Потом «Подключить».\n"
-            "IP Webcam: http://ТЕЛЕФОН:8080/video   ·   DroidCam: http://ТЕЛЕФОН:4747/video"
-        )
-        hint.setObjectName("hint")
-        hint.setWordWrap(True)
-        layout.addWidget(hint)
-
-        row = QHBoxLayout()
-        self.cam_url = QLineEdit(self.cfg["camera"]["url"])
-        self.cam_url.setPlaceholderText("http://192.168.0.100:8080/video")
-        self.cam_url.setToolTip(
-            "Адрес потока с телефона. Его показывает сам IP Webcam/DroidCam. "
-            "Для IP Webcam добавь в конце /video."
-        )
-        row.addWidget(self.cam_url, 1)
-        self.cam_btn = QPushButton("Подключить")
-        self.cam_btn.clicked.connect(self.toggle_camera)
-        row.addWidget(self.cam_btn)
-        layout.addLayout(row)
-
-        self.cam_view = FrameView()
-        self.cam_view.clicked.connect(self.add_corner)
-        layout.addWidget(self.cam_view, 1)
-
-        self.cam_status = QLabel(
-            "Нажми «Подключить», затем отметь 4 угла доски: "
-            "1 — a8, 2 — h8, 3 — h1, 4 — a1 (по часовой стрелке)."
-        )
-        self.cam_status.setObjectName("hint")
-        self.cam_status.setWordWrap(True)
-        layout.addWidget(self.cam_status)
-
-        row2 = QHBoxLayout()
-        reset_btn = QPushButton("Сбросить углы")
-        reset_btn.clicked.connect(self.reset_corners)
-        row2.addWidget(reset_btn)
-        grid_btn = QPushButton("Проверить сетку")
-        grid_btn.clicked.connect(self.test_grid)
-        row2.addWidget(grid_btn)
-        cells_btn = QPushButton("Сохранить клетки")
-        cells_btn.clicked.connect(self.save_cells)
-        row2.addWidget(cells_btn)
-        layout.addLayout(row2)
-
-        corners = self.cfg["camera"].get("corners") or []
-        if len(corners) == 4:
-            self.cam_view.set_points([(float(x), float(y)) for x, y in corners])
         return page
 
     def _build_screen_tab(self) -> QWidget:
@@ -866,89 +805,6 @@ class MainWindow(QWidget):
         if self.auto_check.isChecked():
             self.start_analysis()
 
-    # --------------------------------------------------------------- камера
-    def toggle_camera(self) -> None:
-        if self._stream is not None and self._stream.isRunning():
-            self._stream.stop()
-            self._stream = None
-            self.cam_btn.setText("Подключить")
-            self.cam_status.setText("Поток остановлен.")
-            return
-        url = self.cam_url.text().strip()
-        if not url:
-            self.cam_status.setText("Укажи URL потока.")
-            return
-        self.cfg["camera"]["url"] = url
-        self._stream = StreamReader(url, self)
-        self._stream.frame.connect(self.cam_view.set_image)
-        self._stream.failed.connect(self._on_camera_failed)
-        self._stream.start()
-        self.cam_btn.setText("Стоп")
-        self.cam_status.setText("Подключаюсь к потоку…")
-
-    def _on_camera_failed(self, message: str) -> None:
-        self.cam_btn.setText("Подключить")
-        self.cam_status.setText(message)
-        self._stream = None
-
-    def add_corner(self, x: float, y: float) -> None:
-        points = self.cam_view.points()
-        if len(points) >= 4:
-            points = []
-        points.append((x, y))
-        self.cam_view.set_points(points)
-        if len(points) == 4:
-            self.cam_status.setText("4 угла отмечены. Жми «Проверить сетку».")
-        else:
-            self.cam_status.setText(f"Отмечено {len(points)} из 4 углов.")
-
-    def reset_corners(self) -> None:
-        self.cam_view.set_points([])
-        self.cam_status.setText("Углы сброшены.")
-
-    def _warped(self):
-        image = self.cam_view.image()
-        if image is None:
-            self.cam_status.setText("Нет кадра: подключи камеру.")
-            return None
-        points = self.cam_view.points()
-        if len(points) != 4:
-            self.cam_status.setText("Нужно отметить 4 угла доски.")
-            return None
-        return warp_board(image, points)
-
-    def test_grid(self) -> None:
-        warped = self._warped()
-        if warped is None:
-            return
-        preview = np_to_qimage(draw_grid(warped))
-        label = QLabel()
-        label.setWindowTitle("Доска после выпрямления")
-        label.setPixmap(
-            QPixmap.fromImage(preview).scaled(
-                560,
-                560,
-                Qt.AspectRatioMode.KeepAspectRatio,
-                Qt.TransformationMode.SmoothTransformation,
-            )
-        )
-        label.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose, True)
-        label.show()
-        self._warp_label = label
-        self.cam_status.setText(
-            "Если жёлтые линии идут по краям клеток — калибровка верная."
-        )
-
-    def save_cells(self) -> None:
-        warped = self._warped()
-        if warped is None:
-            return
-        folder = config.REPORTS / "squares"
-        folder.mkdir(parents=True, exist_ok=True)
-        for name, array in split_cells(warped).items():
-            np_to_qimage(array).save(str(folder / f"{name}.png"), "PNG")
-        self.cam_status.setText(f"Сохранено 64 клетки: {folder}")
-
     # --------------------------------------------------------------- screen
     def _region(self) -> dict:
         return {key: spin.value() for key, spin in self.cap_spins.items()}
@@ -990,9 +846,6 @@ class MainWindow(QWidget):
         for job in (self._job, self._report_job):
             if job is not None and job.isRunning():
                 job.wait(3000)
-        if self._stream is not None:
-            self._stream.stop()
-            self._stream = None
         self.hotkey.unregister()
         geo = self.geometry()
         self.cfg["window"] = {"x": geo.x(), "y": geo.y(), "w": geo.width(), "h": geo.height()}
@@ -1001,10 +854,6 @@ class MainWindow(QWidget):
         self.cfg["multipv"] = self.multipv_spin.value()
         self.cfg["report_depth"] = self.report_depth.value()
         self.cfg["capture"] = self._region()
-        self.cfg["camera"] = {
-            "url": self.cam_url.text().strip(),
-            "corners": [[float(x), float(y)] for x, y in self.cam_view.points()],
-        }
         config.save(self.cfg)
         self.analyzer.quit()
         super().closeEvent(event)

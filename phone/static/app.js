@@ -12,6 +12,7 @@ const levelEl = document.getElementById("level");
 const colorEl = document.getElementById("colorSide");
 const modeButtons = Array.from(document.querySelectorAll(".mode-btn"));
 const modeHintEl = document.getElementById("modeHint");
+const autoEl = document.getElementById("autoAnalyse");
 const promoEl = document.getElementById("promo");
 
 const S = {
@@ -19,6 +20,7 @@ const S = {
   level: 8,
   color: "w",
   mode: "engine",
+  auto: true,
   turn: "w",
   legal: {},
   selected: null,
@@ -208,6 +210,7 @@ function doMove(from, to) {
 }
 
 async function sendMove(uci) {
+  cancelAutoAnalysis();
   setBusy(true);
   S.hint = null;
   S.selected = null;
@@ -231,11 +234,13 @@ async function sendMove(uci) {
     render();
   } finally {
     setBusy(false);
+    autoAnalyse();
   }
 }
 
 async function doHint() {
   if (S.busy || S.over) return;
+  cancelAutoAnalysis();
   setBusy(true);
   hintEl.textContent = "Считаю…";
   try {
@@ -257,8 +262,39 @@ async function doHint() {
   }
 }
 
+let analysisSeq = 0;
+
+function cancelAutoAnalysis() {
+  analysisSeq += 1;
+}
+
+async function autoAnalyse() {
+  if (!S.auto || S.busy || S.over) return;
+  const seq = ++analysisSeq;
+  const fen = S.fen;
+  hintEl.textContent = "Анализ на ПК…";
+  try {
+    const payload = await api("/api/hint", { fen, depth: 12 });
+    if (seq !== analysisSeq || fen !== S.fen) return;
+    if (payload.best && payload.best.from) {
+      S.hint = { from: payload.best.from, to: payload.best.to };
+      hintEl.textContent =
+        "Лучший ход: " + payload.best.san + "   (" + payload.score + ")\n" + (payload.pv || "");
+    } else {
+      S.hint = null;
+      hintEl.textContent = "Анализ: оценка " + (payload.score || "—");
+    }
+    evalEl.textContent = payload.score || evalEl.textContent;
+    render();
+  } catch (error) {
+    if (seq !== analysisSeq) return;
+    hintEl.textContent = "Ошибка: " + error.message;
+  }
+}
+
 async function doBot() {
   if (S.busy || S.over) return;
+  cancelAutoAnalysis();
   setBusy(true);
   S.hint = null;
   hintEl.textContent = "Stockfish играет за тебя…";
@@ -286,10 +322,12 @@ async function doBot() {
     hintEl.textContent = "Ошибка: " + error.message;
   } finally {
     setBusy(false);
+    autoAnalyse();
   }
 }
 
 async function newGame() {
+  cancelAutoAnalysis();
   S.color = colorEl.value;
   S.level = parseInt(levelEl.value, 10);
   S.history = [];
@@ -316,11 +354,13 @@ async function newGame() {
     hintEl.textContent = "Ошибка: " + error.message;
   } finally {
     setBusy(false);
+    autoAnalyse();
   }
 }
 
 async function doUndo() {
   if (S.busy || !S.history.length) return;
+  cancelAutoAnalysis();
   let fen = S.history.pop();
   if (S.mode === "engine") {
     while (S.history.length && fen.split(" ")[1] !== S.color) {
@@ -338,6 +378,7 @@ async function doUndo() {
     hintEl.textContent = "Ошибка: " + error.message;
   } finally {
     setBusy(false);
+    autoAnalyse();
   }
 }
 
@@ -396,5 +437,20 @@ for (const btn of modeButtons) {
 }
 
 applyMode("engine");
+
+S.auto = localStorage.getItem("chessAutoAnalyse") !== "0";
+autoEl.checked = S.auto;
+autoEl.addEventListener("change", () => {
+  S.auto = autoEl.checked;
+  localStorage.setItem("chessAutoAnalyse", S.auto ? "1" : "0");
+  if (!S.auto) {
+    cancelAutoAnalysis();
+    S.hint = null;
+    hintEl.textContent = "";
+    render();
+  } else {
+    autoAnalyse();
+  }
+});
 
 newGame();

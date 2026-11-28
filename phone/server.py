@@ -10,6 +10,7 @@ from __future__ import annotations
 import json
 import socket
 import sys
+import threading
 import traceback
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -28,6 +29,7 @@ PORT = int(CFG.get("phone", {}).get("port", 8000))
 
 ANALYZER = Analyzer(CFG["engine_path"])
 ANALYZER.configure(int(CFG.get("threads", 2)), int(CFG.get("hash_mb", 256)))
+ENGINE_LOCK = threading.Lock()
 
 CONTENT_TYPES = {
     ".html": "text/html; charset=utf-8",
@@ -63,8 +65,9 @@ def position_payload(board: chess.Board) -> dict:
 
 
 def play_engine(board: chess.Board, level: int) -> tuple[chess.Move | None, str]:
-    ANALYZER.set_skill(level)
-    move = ANALYZER.best_move(board.fen(), movetime=level_time(level))
+    with ENGINE_LOCK:
+        ANALYZER.set_skill(level)
+        move = ANALYZER.best_move(board.fen(), movetime=level_time(level))
     if move is None:
         return None, ""
     san = board.san(move)
@@ -195,8 +198,9 @@ class Handler(BaseHTTPRequestHandler):
         depth = int(body.get("depth", 16))
         if board.is_game_over(claim_draw=True):
             return {"best": None, "score": "—", "pv": ""}
-        ANALYZER.set_skill(20)
-        lines = ANALYZER.analyse(board.fen(), depth=depth, multipv=1)
+        with ENGINE_LOCK:
+            ANALYZER.set_skill(20)
+            lines = ANALYZER.analyse(board.fen(), depth=depth, multipv=1)
         if not lines:
             return {"best": None, "score": "—", "pv": ""}
         best = lines[0]
